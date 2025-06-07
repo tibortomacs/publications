@@ -1,0 +1,48 @@
+name: Töröld a commit-okat és tartsd meg a fájlokat
+
+# Engedélyek beállítása a GITHUB_TOKEN számára
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  purge-history:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout teljes történettel
+        uses: actions/checkout@v3
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Git felhasználó beállítása
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Új, üres ág létrehozása
+        run: |
+          git checkout --orphan clean-history
+
+      - name: Régi commit-ok eltávolítása az indexből
+        run: |
+          git rm -rf --cached .
+
+      - name: Fájlok hozzáadása és új commit
+        run: |
+          git add .
+          git commit -m "Initial clean commit"
+
+      - name: Git GC a tárhely minimumra csökkentéséhez
+        run: |
+          git gc --prune=now --aggressive
+
+      - name: Ág átnevezése fő ágra és erőltetett push
+        run: |
+          git branch -M main
+          git push -f origin main
